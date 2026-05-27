@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Guess Who? — Personalized Edition</title>
-<meta name="description" content="Create your own personalized Guess Who game with custom characters and photos. Share with friends using a code — no app needed.">
-<meta name="keywords" content="guess who, personalized game, custom board game, party game, friend game">
-<meta property="og:title" content="Guess Who? — Personalized Edition">
-<meta property="og:description" content="Create your own Guess Who game with custom characters. Share with friends instantly.">
+<meta name="description" content="Create your own personalized Guess Who game with custom characters and photos. No account, no login — just share a code with friends and play instantly.">
+<meta name="keywords" content="guess who, personalized guess who, custom guess who game, no account, play with friends, party game">
+<meta property="og:title" content="Guess Who? — No Account Needed">
+<meta property="og:description" content="Create a custom Guess Who game and share with friends instantly. No login, no Google account — just a code.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Guess Who? — Personalized Edition">
-<meta name="twitter:description" content="Create your own Guess Who game with custom characters. Share with friends instantly.">
+<meta name="twitter:title" content="Guess Who? — No Account Needed">
+<meta name="twitter:description" content="Create a custom Guess Who game and share with friends. No login, no Google account — just a code.">
 <link rel="sitemap" type="application/xml" href="/sitemap.xml">
 <script type="application/ld+json">
 {
@@ -19,7 +19,7 @@
   "@type": "WebApplication",
   "name": "Guess Who? — Personalized Edition",
   "url": "https://guesswho-personalized.vercel.app",
-  "description": "Create your own personalized Guess Who game with custom characters and photos. Share with friends using a code — no app or account needed.",
+  "description": "Create your own personalized Guess Who game with custom characters and photos. No account, no login — just share a code with friends and play instantly.",
   "applicationCategory": "GameApplication",
   "operatingSystem": "Any",
   "offers": {
@@ -569,7 +569,32 @@ function updateEditorBanner() {
   }
 }
 
-function loadIntoEditor(payload) {
+// Convert external URL to base64 via canvas (bypasses hotlinking)
+async function fetchToBase64(url) {
+  if (!url || url.startsWith('data:')) return url;
+  try {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const MAX = 300; // max width/height px — keeps file size small
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => resolve(url);
+      img.src = url;
+    });
+  } catch(e) { return url; }
+}
+
+async function loadIntoEditor(payload) {
   $('gameName').value = payload.name || '';
   $('gameNameCount').textContent = $('gameName').value.length;
   $('isPublicToggle').checked = payload.isPublic || false;
@@ -577,6 +602,18 @@ function loadIntoEditor(payload) {
   applyTheme(payload.theme || 'default');
   characters = (payload.chars || []).map(c => ({ name: c.n || '', img: c.i || '', emoji: c.e || '🙂' }));
   renderCharsGrid();
+
+  // Auto-convert any external URLs to base64 in background
+  const urlChars = characters.filter(c => c.img && !c.img.startsWith('data:'));
+  if (urlChars.length > 0) {
+    showToast('Converting images... please wait', 4000);
+    await Promise.all(urlChars.map(async ch => {
+      const b64 = await fetchToBase64(ch.img);
+      if (b64 !== ch.img) ch.img = b64;
+    }));
+    renderCharsGrid();
+    showToast('Images converted! Hit Save Changes to keep them. ✓');
+  }
 }
 
 $('gameName').addEventListener('input', () => { $('gameNameCount').textContent = $('gameName').value.length; });
@@ -657,10 +694,16 @@ $('fileInput').addEventListener('change', e => {
 /* ─── URL MODAL ─── */
 function openUrlModal(i)  { urlModalIdx = i; $('urlInput').value = characters[i].img || ''; $('urlModal').classList.add('open'); }
 function closeUrlModal()  { $('urlModal').classList.remove('open'); urlModalIdx = null; }
-function applyUrl() {
+async function applyUrl() {
   if (urlModalIdx === null) return;
   const url = $('urlInput').value.trim();
-  characters[urlModalIdx].img   = url;
+  if (url && !url.startsWith('data:')) {
+    showToast('Loading image...', 3000);
+    const b64 = await fetchToBase64(url);
+    characters[urlModalIdx].img = b64;
+  } else {
+    characters[urlModalIdx].img = url;
+  }
   characters[urlModalIdx].emoji = url ? '' : EMOJIS[urlModalIdx % EMOJIS.length];
   closeUrlModal(); renderCharsGrid();
 }
