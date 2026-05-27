@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guess Who?</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0e11; --surface: #1a1820; --surface2: #24222e;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+    --text: #f0eef8; --muted: rgba(240,238,248,0.45);
+    --accent: #c8a2f0; --accent2: #8b5cf6; --accent3: #f0a2c8;
+    --danger: #f06a6a; --success: #6af0a2; --warning: #f0c46a;
+    --card-radius: 16px;
+    --font-title: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  [data-theme="warm"] { --bg:#12100a;--surface:#1e1a10;--surface2:#2a2416;--border:rgba(255,220,100,0.1);--border2:rgba(255,220,100,0.2);--text:#fdf6e3;--muted:rgba(253,246,227,0.45);--accent:#f5c842;--accent2:#d4a017;--accent3:#f58c42; }
+  [data-theme="ocean"] { --bg:#070d1a;--surface:#0d1a2e;--surface2:#132238;--border:rgba(80,180,255,0.1);--border2:rgba(80,180,255,0.2);--text:#e0f0ff;--muted:rgba(224,240,255,0.45);--accent:#50c8ff;--accent2:#1e90d0;--accent3:#50ffd0; }
+  [data-theme="rose"] { --bg:#120a0d;--surface:#1e1014;--surface2:#2a161c;--border:rgba(255,120,160,0.1);--border2:rgba(255,120,160,0.2);--text:#ffe8f0;--muted:rgba(255,232,240,0.45);--accent:#ff78a0;--accent2:#c0405e;--accent3:#ff78d8; }
+
+  body { font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;transition:background 0.4s,color 0.4s; }
+  .screen { display:none; }
+  .screen.active { display:block; }
+
+  /* HOME */
+  #home { min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;position:relative;overflow:hidden; }
+  .home-bg { position:absolute;inset:0;pointer-events:none; }
+  .home-bg::before { content:'';position:absolute;width:600px;height:600px;top:-200px;left:-100px;background:radial-gradient(circle,rgba(200,162,240,0.12) 0%,transparent 70%);animation:bgpulse 6s ease-in-out infinite alternate; }
+  .home-bg::after { content:'';position:absolute;width:400px;height:400px;bottom:-100px;right:-80px;background:radial-gradient(circle,rgba(240,162,200,0.1) 0%,transparent 70%);animation:bgpulse 8s ease-in-out infinite alternate-reverse; }
+  @keyframes bgpulse { from{transform:scale(1);opacity:0.7} to{transform:scale(1.15);opacity:1} }
+  .home-content { position:relative;z-index:1;text-align:center;max-width:500px;width:100%; }
+  .home-logo { font-family:var(--font-title);font-size:clamp(64px,12vw,110px);letter-spacing:2px;line-height:0.9;color:var(--text);margin-bottom:0.5rem; }
+  .home-logo span { color:var(--accent); }
+  .home-sub { font-size:14px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:3rem; }
+  .home-btns { display:flex;flex-direction:column;gap:12px; }
+  .btn-primary { background:var(--accent2);color:#fff;border:none;padding:16px 32px;border-radius:12px;font-family:var(--font-body);font-size:16px;font-weight:600;cursor:pointer;transition:transform 0.15s,opacity 0.15s; }
+  .btn-primary:hover { opacity:0.88;transform:translateY(-2px); }
+  .btn-primary:active { transform:scale(0.97); }
+
+  .code-input-row { display:flex;gap:10px; }
+  .code-input-row input { flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:13px 18px;color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:600;letter-spacing:3px;text-transform:uppercase;outline:none;transition:border-color 0.2s; }
+  .code-input-row input:focus { border-color:var(--accent); }
+  .code-input-row input::placeholder { letter-spacing:1px;font-weight:400;color:var(--muted);font-size:14px; }
+  .code-input-row button { background:var(--accent2);color:#fff;border:none;border-radius:12px;padding:13px 20px;font-size:18px;cursor:pointer;transition:opacity 0.15s; }
+  .code-input-row button:hover { opacity:0.82; }
+  .code-input-row button.ghost { background:var(--surface);border:1px solid var(--border2);color:var(--accent);font-size:16px; }
+  .code-input-row button.ghost:hover { background:var(--surface2); }
+
+  .home-divider { display:flex;align-items:center;gap:12px;margin:4px 0; }
+  .home-divider span { font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase; }
+  .home-divider::before,.home-divider::after { content:'';flex:1;height:1px;background:var(--border); }
+
+  .home-themes { display:flex;gap:8px;justify-content:center;margin-top:2rem; }
+  .theme-dot { width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform 0.2s,border-color 0.2s; }
+  .theme-dot:hover,.theme-dot.active { transform:scale(1.2);border-color:var(--text); }
+  .theme-dot[data-t="default"] { background:linear-gradient(135deg,#c8a2f0,#8b5cf6); }
+  .theme-dot[data-t="warm"]    { background:linear-gradient(135deg,#f5c842,#d4a017); }
+  .theme-dot[data-t="ocean"]   { background:linear-gradient(135deg,#50c8ff,#1e90d0); }
+  .theme-dot[data-t="rose"]    { background:linear-gradient(135deg,#ff78a0,#c0405e); }
+
+  /* EDITOR */
+  #editor { min-height:100vh;padding:2rem;max-width:900px;margin:0 auto; }
+  .page-header { display:flex;align-items:center;gap:16px;margin-bottom:1.25rem; }
+  .back-btn { background:var(--surface);border:1px solid var(--border);color:var(--muted);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:color 0.2s,border-color 0.2s; }
+  .back-btn:hover { color:var(--text);border-color:var(--border2); }
+  .page-title { font-family:var(--font-title);font-size:36px;letter-spacing:1px;color:var(--text); }
+
+  /* Edit mode banner */
+  .edit-banner { border-radius:12px;padding:0.875rem 1.25rem;margin-bottom:1.25rem;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+  .edit-banner.public-edit { background:rgba(106,240,162,0.08);border:1px solid rgba(106,240,162,0.25); }
+  .edit-banner.fork-edit   { background:rgba(200,162,240,0.08);border:1px solid rgba(200,162,240,0.2); }
+  .edit-banner-left { display:flex;align-items:center;gap:10px; }
+  .edit-banner-icon { font-size:20px; }
+  .edit-banner-title { font-size:13px;font-weight:600; }
+  .edit-banner-title.public { color:var(--success); }
+  .edit-banner-title.fork   { color:var(--accent); }
+  .edit-banner-desc { font-size:12px;color:var(--muted);margin-top:2px; }
+  .edit-banner-code { font-family:var(--font-title);font-size:15px;letter-spacing:2px; }
+
+  .section-label { font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;margin-top:1.5rem; }
+  .section-divider { height:1px;background:var(--border);margin:1.25rem 0; }
+  .editor-info { background:var(--surface);border:1px solid var(--border);border-radius:var(--card-radius);padding:1.5rem;margin-bottom:1.5rem; }
+  .editor-info input[type="text"] { width:100%;background:transparent;border:none;border-bottom:1px solid var(--border2);padding:8px 0;font-family:var(--font-body);font-size:18px;font-weight:500;color:var(--text);outline:none;transition:border-color 0.2s;margin-bottom:0.5rem; }
+  .editor-info input[type="text"]:focus { border-color:var(--accent); }
+  .char-counter { font-size:12px;color:var(--muted);text-align:right;margin-bottom:0.5rem; }
+  .theme-row { display:flex;gap:8px;flex-wrap:wrap; }
+  .theme-pill { padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--font-body);font-size:12px;cursor:pointer;transition:all 0.2s; }
+  .theme-pill.active,.theme-pill:hover { border-color:var(--accent);color:var(--accent);background:rgba(139,92,246,0.08); }
+  .privacy-row { display:flex;align-items:center;gap:14px;padding:1rem;background:var(--surface2);border-radius:12px;border:1px solid var(--border);margin-top:1rem; }
+  .toggle { position:relative;width:44px;height:24px;flex-shrink:0; }
+  .toggle input { opacity:0;width:0;height:0; }
+  .toggle-slider { position:absolute;inset:0;background:var(--border2);border-radius:24px;cursor:pointer;transition:background 0.25s; }
+  .toggle-slider::before { content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.25s; }
+  .toggle input:checked + .toggle-slider { background:var(--accent2); }
+  .toggle input:checked + .toggle-slider::before { transform:translateX(20px); }
+  .toggle-label { font-size:14px;color:var(--text);font-weight:500; }
+  .toggle-desc { font-size:12px;color:var(--muted); }
+
+  .chars-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-bottom:5rem; }
+  .char-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--card-radius);padding:1rem;display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;transition:border-color 0.2s; }
+  .char-card:hover { border-color:var(--border2); }
+  .char-avatar-wrap { width:72px;height:72px;border-radius:50%;background:var(--surface2);border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:border-color 0.2s;flex-shrink:0; }
+  .char-avatar-wrap:hover { border-color:var(--accent); }
+  .char-avatar-wrap img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+  .char-avatar-placeholder { font-size:28px;color:var(--muted); }
+  .char-name-input { width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);text-align:center;font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text);outline:none;padding:4px 2px;transition:border-color 0.2s; }
+  .char-name-input:focus { border-color:var(--accent); }
+  .char-name-input::placeholder { color:var(--muted); }
+  .char-delete { position:absolute;top:8px;right:8px;width:22px;height:22px;background:rgba(240,106,106,0.15);border:none;border-radius:6px;color:var(--danger);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s; }
+  .char-card:hover .char-delete { opacity:1; }
+  .char-url-btn { font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:var(--font-body);transition:color 0.2s; }
+  .char-url-btn:hover { color:var(--accent); }
+  .add-char-card { background:transparent;border:1.5px dashed var(--border2);border-radius:var(--card-radius);padding:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;min-height:150px;transition:border-color 0.2s,background 0.2s;color:var(--muted);font-size:13px; }
+  .add-char-card:hover { border-color:var(--accent);background:rgba(139,92,246,0.05);color:var(--accent); }
+  .add-icon { font-size:28px; }
+
+  .editor-footer { position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);padding:1rem 2rem;display:flex;gap:12px;align-items:center;justify-content:space-between;z-index:10; }
+  .char-count-info { font-size:13px;color:var(--muted); }
+  .char-count-info span { color:var(--text);font-weight:600; }
+  .footer-right { display:flex;gap:10px; }
+  .btn-sm { padding:10px 22px;border-radius:10px;font-family:var(--font-body);font-size:14px;font-weight:500;cursor:pointer;transition:all 0.15s;border:none; }
+  .btn-sm.primary { background:var(--accent2);color:#fff; }
+  .btn-sm.primary:hover { opacity:0.85;transform:translateY(-1px); }
+  .btn-sm.ghost { background:var(--surface);border:1px solid var(--border2);color:var(--text); }
+  .btn-sm.ghost:hover { background:var(--surface2); }
+
+  /* SHARE MODAL */
+  .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center;z-index:100;padding:2rem; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:2rem;max-width:480px;width:100%;text-align:center; }
+  .modal h2 { font-family:var(--font-title);font-size:32px;margin-bottom:0.4rem;color:var(--text); }
+  .modal .modal-sub { color:var(--muted);font-size:14px;margin-bottom:1.5rem; }
+
+  /* Two code boxes */
+  .code-pair { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem; }
+  .code-box { border-radius:14px;padding:1rem;text-align:center;cursor:pointer;transition:border-color 0.2s; }
+  .code-box.play-box { background:rgba(106,240,162,0.06);border:1px solid rgba(106,240,162,0.2); }
+  .code-box.edit-box { background:rgba(240,106,106,0.06);border:1px solid rgba(240,106,106,0.2); }
+  .code-box:hover { border-color: var(--accent); }
+  .code-box-label { font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px; }
+  .code-box.play-box .code-box-label { color:var(--success); }
+  .code-box.edit-box .code-box-label { color:var(--danger); }
+  .code-box-value { font-family:var(--font-title);font-size:26px;letter-spacing:4px; }
+  .code-box.play-box .code-box-value { color:var(--success); }
+  .code-box.edit-box .code-box-value { color:var(--danger); }
+  .code-box-hint { font-size:10px;color:var(--muted);margin-top:4px; }
+
+  .warning-box { background:rgba(240,196,106,0.1);border:1px solid rgba(240,196,106,0.3);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;text-align:left; }
+  .warning-box .w-title { font-size:13px;font-weight:600;color:var(--warning);margin-bottom:0.4rem; }
+  .warning-box .w-body { font-size:12px;color:var(--muted);line-height:1.6; }
+  .warning-box .w-body strong { color:var(--text); }
+  .modal-btns { display:flex;gap:10px; }
+  .modal-btns button { flex:1; }
+
+  /* GAME */
+  #game { min-height:100vh;padding:1.5rem;max-width:1100px;margin:0 auto; }
+  .game-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;flex-wrap:wrap; }
+  .game-title-row { display:flex;align-items:center;gap:14px; }
+  .game-title { font-family:var(--font-title);font-size:28px;color:var(--text); }
+  .secret-reveal { background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:0.6rem 1rem;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px; }
+  .secret-name { color:var(--accent);font-weight:600;filter:blur(6px);transition:filter 0.4s; }
+  .secret-name.revealed { filter:blur(0); }
+  .eye-btn { background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;transition:color 0.2s;padding:0;line-height:1; }
+  .eye-btn:hover { color:var(--accent); }
+  .game-controls { display:flex;gap:8px;align-items:center; }
+  .reset-btn { background:var(--surface);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all 0.2s; }
+  .reset-btn:hover { color:var(--text);border-color:var(--border2); }
+  .edit-game-btn { background:var(--surface2);border:1px solid var(--border2);color:var(--accent);padding:8px 16px;border-radius:10px;font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all 0.2s;display:none; }
+  .edit-game-btn:hover { background:var(--surface);border-color:var(--accent); }
+  .eliminated-count { font-size:13px;color:var(--muted); }
+  .eliminated-count span { color:var(--text);font-weight:600; }
+  .game-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px; }
+  .game-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--card-radius);padding:0.875rem;display:flex;flex-direction:column;align-items:center;gap:8px;transition:opacity 0.3s;position:relative;overflow:hidden; }
+  .game-card.eliminated { opacity:0.32; }
+  .game-card.eliminated .game-avatar { filter:grayscale(1) brightness(0.35); }
+  .game-avatar { width:68px;height:68px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:28px;transition:filter 0.3s;overflow:hidden;flex-shrink:0; }
+  .game-avatar img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+  .game-char-name { font-size:12px;font-weight:500;color:var(--text);text-align:center;line-height:1.3;word-break:break-word; }
+  .eliminate-btn { width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;margin-top:2px; }
+  .eliminate-btn:hover { background:rgba(240,106,106,0.15);border-color:var(--danger);color:var(--danger);transform:scale(1.1); }
+  .game-card.eliminated .eliminate-btn { background:rgba(240,106,106,0.2);border-color:var(--danger);color:var(--danger); }
+  .game-card.eliminated::after { content:'✕';position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);font-size:36px;color:var(--danger);opacity:0.45;pointer-events:none; }
+
+  /* URL MODAL */
+  .url-modal { position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:200;padding:2rem; }
+  .url-modal.open { display:flex; }
+  .url-modal-box { background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:1.5rem;max-width:380px;width:100%; }
+  .url-modal-box h3 { font-family:var(--font-title);font-size:22px;margin-bottom:0.5rem;color:var(--text); }
+  .url-modal-box p { font-size:13px;color:var(--muted);margin-bottom:1rem; }
+  .url-modal-box input { width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;font-family:var(--font-body);font-size:13px;color:var(--text);outline:none;margin-bottom:1rem;transition:border-color 0.2s; }
+  .url-modal-box input:focus { border-color:var(--accent); }
+  .url-modal-btns { display:flex;gap:8px; }
+  .url-modal-btns button { flex:1; }
+
+  .loading-overlay { position:fixed;inset:0;background:rgba(15,14,17,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem; }
+  .loading-overlay.hidden { display:none; }
+  .spinner { width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent2);border-radius:50%;animation:spin 0.7s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .loading-text { font-size:14px;color:var(--muted); }
+  .toast { position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:12px 24px;font-size:14px;color:var(--text);opacity:0;transition:all 0.3s;pointer-events:none;z-index:1000;white-space:nowrap; }
+  .toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+  /* PUBLIC GAMES */
+  .public-section { margin-top:2.5rem;width:100%;text-align:left; }
+  .public-section-title { font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;text-align:center; }
+  .public-games-grid { display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;padding-right:4px; }
+  .public-game-card { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.875rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:border-color 0.2s,background 0.2s; }
+  .public-game-card:hover { border-color:var(--border2);background:var(--surface2); }
+  .public-game-info { display:flex;flex-direction:column;gap:3px;min-width:0; }
+  .public-game-name { font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .public-game-meta { font-size:12px;color:var(--muted); }
+  .public-game-play { background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity 0.15s; }
+  .public-game-play:hover { opacity:0.85; }
+  .public-empty { text-align:center;color:var(--muted);font-size:13px;padding:1.5rem 0; }
+  .public-loading { text-align:center;color:var(--muted);font-size:13px;padding:1rem 0; }
+
+  input[type="file"] { display:none; }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-thumb { background:var(--border2);border-radius:3px; }
+  @media(max-width:600px) {
+    #editor { padding:1rem; } .editor-footer { padding:1rem; }
+    .chars-grid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); }
+    .game-grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); }
+    .home-logo { font-size:72px; } .game-header { flex-direction:column;align-items:flex-start; }
+    .code-pair { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Loading...</div>
+</div>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="home-bg"></div>
+  <div class="home-content">
+    <div class="home-logo">GUESS<br><span>WHO?</span></div>
+    <div class="home-sub">Personalized Edition</div>
+    <div class="home-btns">
+      <button class="btn-primary" id="btnCreateNew">✦ Create New Game</button>
+      <div class="home-divider"><span>Play</span></div>
+      <div class="code-input-row">
+        <input type="text" id="joinCode" placeholder="Enter play code..." maxlength="9">
+        <button id="btnJoin">→</button>
+      </div>
+      <div class="home-divider"><span>Edit</span></div>
+      <div class="code-input-row">
+        <input type="text" id="editCode" placeholder="Enter edit code..." maxlength="9">
+        <button id="btnEditLoad" class="ghost">✎</button>
+      </div>
+    </div>
+    <div class="home-themes">
+      <div class="theme-dot active" data-t="default" title="Purple Night"></div>
+      <div class="theme-dot" data-t="warm" title="Warm Gold"></div>
+      <div class="theme-dot" data-t="ocean" title="Deep Ocean"></div>
+      <div class="theme-dot" data-t="rose" title="Rose Pink"></div>
+    </div>
+    <div class="public-section">
+      <div class="public-section-title">Public Games</div>
+      <div class="public-games-grid" id="publicGamesList">
+        <div class="public-loading">Loading public games...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div id="editor" class="screen">
+  <div class="page-header">
+    <button class="back-btn" id="btnEditorBack">←</button>
+    <span class="page-title" id="editorPageTitle">GAME EDITOR</span>
+  </div>
+
+  <!-- Edit mode banner (shown when editing) -->
+  <div class="edit-banner" id="editBanner">
+    <div class="edit-banner-left">
+      <span class="edit-banner-icon" id="editBannerIcon"></span>
+      <div>
+        <div class="edit-banner-title" id="editBannerTitle"></div>
+        <div class="edit-banner-desc" id="editBannerDesc"></div>
+      </div>
+    </div>
+    <button class="btn-sm primary" id="btnSaveChanges">Save Changes ✦</button>
+  </div>
+
+  <div class="editor-info">
+    <p class="section-label">Game Name</p>
+    <input type="text" id="gameName" placeholder="e.g. Friend Group, Our Class..." maxlength="40">
+    <div class="char-counter"><span id="gameNameCount">0</span> / 40</div>
+    <div class="section-divider"></div>
+    <p class="section-label">Theme</p>
+    <div class="theme-row" id="editorThemes">
+      <button class="theme-pill active" data-t="default">Purple Night</button>
+      <button class="theme-pill" data-t="warm">Warm Gold</button>
+      <button class="theme-pill" data-t="ocean">Deep Ocean</button>
+      <button class="theme-pill" data-t="rose">Rose Pink</button>
+    </div>
+    <div class="section-divider"></div>
+    <div class="privacy-row">
+      <span id="privacyIcon">🔒</span>
+      <label class="toggle">
+        <input type="checkbox" id="isPublicToggle">
+        <span class="toggle-slider"></span>
+      </label>
+      <div>
+        <div class="toggle-label" id="privacyLabel">Private Game</div>
+        <div class="toggle-desc" id="privacyDesc">Only people with the code can join</div>
+      </div>
+    </div>
+  </div>
+  <p class="section-label">Characters (<span id="charCountLabel">0</span> / 50)</p>
+  <div class="chars-grid" id="charsGrid"></div>
+  <div class="editor-footer">
+    <div class="char-count-info"><span id="footerCount">0</span> characters added</div>
+    <div class="footer-right">
+      <button class="btn-sm ghost" id="btnPreview">Preview</button>
+      <button class="btn-sm primary" id="btnGenCode">Generate Code ✦</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <div class="game-header">
+    <div class="game-title-row">
+      <button class="back-btn" id="btnGameBack">←</button>
+      <div class="game-title" id="gameDisplayTitle">GUESS WHO?</div>
+    </div>
+    <div id="secretBox" class="secret-reveal" style="display:none">
+      <span>🎯 Secret:</span>
+      <span class="secret-name" id="secretName">???</span>
+      <button class="eye-btn" id="btnEye">👁</button>
+    </div>
+    <div class="game-controls">
+      <div class="eliminated-count">Eliminated: <span id="eliminatedCount">0</span></div>
+      <button class="reset-btn" id="btnReset">Reset</button>
+      <button class="edit-game-btn" id="btnEditFromGame">✎ Edit</button>
+    </div>
+  </div>
+  <div class="game-grid" id="gameGrid"></div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal">
+    <h2>GAME READY ✦</h2>
+    <p class="modal-sub">Two codes — share the play code, keep the edit code safe.</p>
+    <div class="code-pair">
+      <div class="code-box play-box" id="sharePlayBox" title="Click to copy">
+        <div class="code-box-label">🎮 Play Code</div>
+        <div class="code-box-value" id="sharePlayCode"></div>
+        <div class="code-box-hint">Share with friends</div>
+      </div>
+      <div class="code-box edit-box" id="shareEditBox" title="Click to copy">
+        <div class="code-box-label">✎ Edit Code</div>
+        <div class="code-box-value" id="shareEditCode"></div>
+        <div class="code-box-hint">Keep this private</div>
+      </div>
+    </div>
+    <div class="warning-box">
+      <div class="w-title">⚠ Don't lose your edit code!</div>
+      <div class="w-body">
+        <strong>Play code</strong> → friends can join and play their own version (changes don't affect the original).<br><br>
+        <strong>Edit code</strong> → only you have this. Use it to update the public game. If you lose it, you can't edit the original anymore.
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-sm ghost" id="btnCloseShare">Close</button>
+      <button class="btn-sm primary" id="btnPlayNow">Play Now →</button>
+    </div>
+  </div>
+</div>
+
+<!-- URL MODAL -->
+<div class="url-modal" id="urlModal">
+  <div class="url-modal-box">
+    <h3>Image URL</h3>
+    <p>Paste the image link for this character</p>
+    <input type="text" id="urlInput" placeholder="https://...">
+    <div class="url-modal-btns">
+      <button class="btn-sm ghost" id="btnUrlCancel">Cancel</button>
+      <button class="btn-sm primary" id="btnUrlApply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*">
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp }                     from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyBo5kdsAmttNTJWMAW7SL4UIWYDxY3Op1U",
+  authDomain: "guess-who-e273b.firebaseapp.com",
+  projectId: "guess-who-e273b",
+  storageBucket: "guess-who-e273b.firebasestorage.app",
+  messagingSenderId: "777779382284",
+  appId: "1:777779382284:web:5e69565461123345d28629"
+});
+const db = getFirestore(app);
+
+async function dbSet(code, data) {
+  await setDoc(doc(db, "games", code), { ...data, updatedAt: Date.now() });
+}
+async function dbGet(code) {
+  const snap = await getDoc(doc(db, "games", code));
+  return snap.exists() ? snap.data() : null;
+}
+async function dbGetPublic() {
+  const q = query(
+    collection(db, "games"),
+    where("isPublic", "==", true),
+    limit(40)
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(g => !g.id.startsWith('GE-'))
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .slice(0, 20);
+}
+
+/* ─── STATE ─── */
+let characters   = [];
+let currentTheme = 'default';
+let pendingAvatarIdx = null;
+let secretRevealed   = false;
+let gameChars  = [];
+let eliminated = new Set();
+let urlModalIdx = null;
+
+/*
+  editMode:
+    null               → create mode (generate new play+edit codes)
+    { type:'public',  playCode, editCode } → editing original via edit code
+    { type:'fork',    playCode }           → editing personal fork via play code
+*/
+let editMode = null;
+
+/* current game's codes (known after load or create) */
+let currentPlayCode = null;
+let currentEditCode = null;
+
+const EMOJIS = ['😀','😎','🧑','👩','🧙','🦸','🧝','👨‍🚀','🧜','🦊','🐱','🦁','🐼','🦄','👾','🤖','🎭','🌟','🔮','🎪'];
+
+/* ─── HELPERS ─── */
+const $ = id => document.getElementById(id);
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function showLoading(msg) { $('loadingText').textContent = msg || 'Loading...'; $('loadingOverlay').classList.remove('hidden'); }
+function hideLoading()    { $('loadingOverlay').classList.add('hidden'); }
+function showToast(msg, ms) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), ms || 2400);
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function makeCode(prefix) {
+  const pool = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = prefix + '-';
+  for (let i = 0; i < 5; i++) c += pool[Math.floor(Math.random() * pool.length)];
+  return c;
+}
+
+/* ─── THEMES ─── */
+function applyTheme(t) {
+  currentTheme = t;
+  document.body.removeAttribute('data-theme');
+  if (t !== 'default') document.body.setAttribute('data-theme', t);
+  document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.t === t));
+  document.querySelectorAll('#editorThemes .theme-pill').forEach(p => p.classList.toggle('active', p.dataset.t === t));
+}
+document.querySelectorAll('.theme-dot').forEach(d => d.addEventListener('click', () => applyTheme(d.dataset.t)));
+document.querySelectorAll('#editorThemes .theme-pill').forEach(p => p.addEventListener('click', () => applyTheme(p.dataset.t)));
+
+/* ─── PRIVACY ─── */
+$('isPublicToggle').addEventListener('change', updatePrivacyUI);
+function updatePrivacyUI() {
+  const pub = $('isPublicToggle').checked;
+  $('privacyIcon').textContent   = pub ? '🌐' : '🔒';
+  $('privacyLabel').textContent  = pub ? 'Public Game' : 'Private Game';
+  $('privacyDesc').textContent   = pub ? 'Anyone with the code can join' : 'Only people with the code can join';
+}
+
+/* ─── EDITOR ─── */
+function resetEditor() {
+  editMode = null;
+  characters = [];
+  $('gameName').value = '';
+  $('gameNameCount').textContent = '0';
+  $('isPublicToggle').checked = false;
+  updatePrivacyUI();
+  applyTheme('default');
+  updateEditorBanner();
+  renderCharsGrid();
+}
+
+function updateEditorBanner() {
+  const banner = $('editBanner');
+  const genBtn  = $('btnGenCode');
+
+  if (!editMode) {
+    banner.style.display = 'none';
+    genBtn.style.display = '';
+    $('editorPageTitle').textContent = 'GAME EDITOR';
+    return;
+  }
+
+  banner.style.display = 'flex';
+  genBtn.style.display = 'none';
+
+  if (editMode.type === 'public') {
+    banner.className = 'edit-banner public-edit';
+    $('editBannerIcon').textContent = '🌐';
+    $('editBannerTitle').textContent = 'Editing public game';
+    $('editBannerTitle').className = 'edit-banner-title public';
+    $('editBannerDesc').innerHTML = 'Edit code: <span class="edit-banner-code">' + editMode.editCode + '</span> — changes update the original';
+    $('editorPageTitle').textContent = 'EDIT GAME';
+  } else {
+    banner.className = 'edit-banner fork-edit';
+    $('editBannerIcon').textContent = '🎮';
+    $('editBannerTitle').textContent = 'Editing your personal copy';
+    $('editBannerTitle').className = 'edit-banner-title fork';
+    $('editBannerDesc').innerHTML = 'Play code: <span class="edit-banner-code">' + editMode.playCode + '</span> — original game not affected';
+    $('editorPageTitle').textContent = 'EDIT COPY';
+  }
+}
+
+function loadIntoEditor(payload) {
+  $('gameName').value = payload.name || '';
+  $('gameNameCount').textContent = $('gameName').value.length;
+  $('isPublicToggle').checked = payload.isPublic || false;
+  updatePrivacyUI();
+  applyTheme(payload.theme || 'default');
+  characters = (payload.chars || []).map(c => ({ name: c.n || '', img: c.i || '', emoji: c.e || '🙂' }));
+  renderCharsGrid();
+}
+
+$('gameName').addEventListener('input', () => { $('gameNameCount').textContent = $('gameName').value.length; });
+
+function buildPayload() {
+  return {
+    name: $('gameName').value.trim() || 'Guess Who',
+    theme: currentTheme,
+    isPublic: $('isPublicToggle').checked,
+    chars: characters.map(c => ({ n: c.name, i: c.img || '', e: c.emoji || '' }))
+  };
+}
+
+/* ─── CHARS GRID ─── */
+function renderCharsGrid() {
+  const grid = $('charsGrid');
+  $('charCountLabel').textContent = characters.length;
+  $('footerCount').textContent    = characters.length;
+  grid.innerHTML = '';
+
+  characters.forEach((ch, i) => {
+    const card = document.createElement('div');
+    card.className = 'char-card';
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'char-delete'; delBtn.title = 'Remove'; delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => { characters.splice(i, 1); renderCharsGrid(); });
+
+    const wrap = document.createElement('div');
+    wrap.className = 'char-avatar-wrap';
+    wrap.addEventListener('click', () => openAvatarPicker(i));
+    if (ch.img) {
+      const img = document.createElement('img'); img.src = ch.img; img.alt = '';
+      const ph  = document.createElement('div'); ph.className = 'char-avatar-placeholder'; ph.textContent = ch.emoji || '📷'; ph.style.display = 'none';
+      img.onerror = () => { img.style.display = 'none'; ph.style.display = ''; };
+      wrap.append(img, ph);
+    } else {
+      const ph = document.createElement('div'); ph.className = 'char-avatar-placeholder'; ph.textContent = ch.emoji || '📷';
+      wrap.appendChild(ph);
+    }
+
+    const nameInput = document.createElement('input');
+    nameInput.className = 'char-name-input'; nameInput.type = 'text';
+    nameInput.placeholder = 'Name...'; nameInput.maxLength = 24; nameInput.value = ch.name || '';
+    nameInput.addEventListener('input', () => { characters[i].name = nameInput.value; });
+
+    const urlBtn = document.createElement('button');
+    urlBtn.className = 'char-url-btn'; urlBtn.textContent = '+ Image URL';
+    urlBtn.addEventListener('click', () => openUrlModal(i));
+
+    card.append(delBtn, wrap, nameInput, urlBtn);
+    grid.appendChild(card);
+  });
+
+  if (characters.length < 50) {
+    const addCard = document.createElement('div');
+    addCard.className = 'add-char-card';
+    addCard.innerHTML = '<div class="add-icon">+</div><div>Add Character</div>';
+    addCard.addEventListener('click', () => {
+      if (characters.length >= 50) { showToast('Maximum 50 characters!'); return; }
+      characters.push({ name: '', img: '', emoji: EMOJIS[characters.length % EMOJIS.length] });
+      renderCharsGrid();
+    });
+    grid.appendChild(addCard);
+  }
+}
+
+/* ─── AVATAR ─── */
+function openAvatarPicker(i) { pendingAvatarIdx = i; $('fileInput').value = ''; $('fileInput').click(); }
+$('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file || pendingAvatarIdx === null) return;
+  const reader = new FileReader();
+  reader.onload = ev => { characters[pendingAvatarIdx].img = ev.target.result; characters[pendingAvatarIdx].emoji = ''; renderCharsGrid(); };
+  reader.readAsDataURL(file);
+});
+
+/* ─── URL MODAL ─── */
+function openUrlModal(i)  { urlModalIdx = i; $('urlInput').value = characters[i].img || ''; $('urlModal').classList.add('open'); }
+function closeUrlModal()  { $('urlModal').classList.remove('open'); urlModalIdx = null; }
+function applyUrl() {
+  if (urlModalIdx === null) return;
+  const url = $('urlInput').value.trim();
+  characters[urlModalIdx].img   = url;
+  characters[urlModalIdx].emoji = url ? '' : EMOJIS[urlModalIdx % EMOJIS.length];
+  closeUrlModal(); renderCharsGrid();
+}
+$('btnUrlCancel').addEventListener('click', closeUrlModal);
+$('btnUrlApply').addEventListener('click', applyUrl);
+$('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyUrl(); });
+$('urlModal').addEventListener('click', e => { if (e.target === $('urlModal')) closeUrlModal(); });
+
+/* ─── GENERATE (create mode) ─── */
+$('btnGenCode').addEventListener('click', async () => {
+  const named = characters.filter(c => c.name.trim());
+  if (named.length < 2) { showToast('Add at least 2 named characters!'); return; }
+
+  const playCode = makeCode('GW');
+  const editCode = makeCode('GE');
+  const payload  = { ...buildPayload(), playCode, editCode };
+
+  showLoading('Saving game...');
+  try {
+    // play code doc — public-queryable, marked as not edit code
+    await dbSet(playCode, { ...payload, isEditCode: false });
+    // edit code doc — marked so it doesn't appear in public list
+    await dbSet(editCode, { ...payload, isEditCode: true });
+    hideLoading();
+
+    currentPlayCode = playCode;
+    currentEditCode = editCode;
+
+    $('sharePlayCode').textContent = playCode;
+    $('shareEditCode').textContent = editCode;
+    $('shareModal').classList.add('open');
+  } catch(err) {
+    hideLoading();
+    showToast('Save failed. Check your connection.');
+    console.error(err);
+  }
+});
+
+$('sharePlayBox').addEventListener('click', () => { navigator.clipboard.writeText($('sharePlayCode').textContent).then(() => showToast('Play code copied! ✓')); });
+$('shareEditBox').addEventListener('click', () => { navigator.clipboard.writeText($('shareEditCode').textContent).then(() => showToast('Edit code copied! ✓')); });
+$('btnCloseShare').addEventListener('click', () => $('shareModal').classList.remove('open'));
+$('shareModal').addEventListener('click', e => { if (e.target === $('shareModal')) $('shareModal').classList.remove('open'); });
+$('btnPlayNow').addEventListener('click', () => {
+  $('shareModal').classList.remove('open');
+  loadAndPlay(currentPlayCode, 'play');
+});
+
+/* ─── SAVE CHANGES (edit mode) ─── */
+$('btnSaveChanges').addEventListener('click', saveChanges);
+async function saveChanges() {
+  if (!editMode) return;
+  const named = characters.filter(c => c.name.trim());
+  if (named.length < 2) { showToast('Keep at least 2 named characters!'); return; }
+
+  const payload = buildPayload();
+  showLoading('Saving changes...');
+  try {
+    if (editMode.type === 'public') {
+      // update both play and edit docs so both stay in sync
+      await dbSet(editMode.playCode, { ...payload, playCode: editMode.playCode, editCode: editMode.editCode, isEditCode: false });
+      await dbSet(editMode.editCode, { ...payload, playCode: editMode.playCode, editCode: editMode.editCode, isEditCode: true });
+      showToast('Public game updated! ✓');
+    } else {
+      // fork: update only the play code doc (forked copy)
+      const existing = await dbGet(editMode.playCode);
+      const editCode = existing?.editCode || null;
+      await dbSet(editMode.playCode, { ...payload, playCode: editMode.playCode, editCode });
+      showToast('Your copy updated! ✓');
+    }
+    hideLoading();
+  } catch(err) {
+    hideLoading();
+    showToast('Save failed. Check your connection.');
+    console.error(err);
+  }
+}
+
+/* ─── JOIN / LOAD ─── */
+$('joinCode').addEventListener('input', () => { $('joinCode').value = $('joinCode').value.toUpperCase(); });
+$('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') handleJoin(); });
+$('btnJoin').addEventListener('click', handleJoin);
+
+async function handleJoin() {
+  const code = $('joinCode').value.trim().toUpperCase();
+  if (!code) { showToast('Enter a play code!'); return; }
+  await loadAndPlay(code, 'play');
+}
+
+$('editCode').addEventListener('input', () => { $('editCode').value = $('editCode').value.toUpperCase(); });
+$('editCode').addEventListener('keydown', e => { if (e.key === 'Enter') handleEditLoad(); });
+$('btnEditLoad').addEventListener('click', handleEditLoad);
+
+async function handleEditLoad() {
+  const code = $('editCode').value.trim().toUpperCase();
+  if (!code) { showToast('Enter an edit code!'); return; }
+  await loadAndPlay(code, 'edit');
+}
+
+async function loadAndPlay(code, mode) {
+  showLoading('Loading game...');
+  try {
+    const payload = await dbGet(code);
+    hideLoading();
+    if (!payload) { showToast('Game not found. Check the code and try again.'); return; }
+
+    applyTheme(payload.theme || 'default');
+    currentPlayCode = payload.playCode || code;
+    currentEditCode = payload.editCode || null;
+
+    // determine if this is a play-code or edit-code
+    const isEditCode = code.startsWith('GE-') || mode === 'edit';
+
+    if (isEditCode) {
+      // edit code → load directly into editor
+      editMode = { type: 'public', playCode: currentPlayCode, editCode: code };
+      loadIntoEditor(payload);
+      updateEditorBanner();
+      showScreen('editor');
+    } else {
+      // play code → game screen, fork mode when editing
+      editMode = { type: 'fork', playCode: code };
+      $('btnEditFromGame').style.display = '';
+      startGame(payload);
+    }
+  } catch(err) {
+    hideLoading();
+    showToast('Connection error. Please try again.');
+    console.error(err);
+  }
+}
+
+/* ─── PREVIEW ─── */
+$('btnPreview').addEventListener('click', () => {
+  if (!characters.filter(c => c.name.trim()).length) { showToast('Add at least one character first!'); return; }
+  editMode = null;
+  startGame(buildPayload());
+});
+
+/* ─── GAME ─── */
+function startGame(payload) {
+  gameChars  = (payload.chars || []).filter(c => c.n && c.n.trim());
+  eliminated = new Set();
+  $('gameDisplayTitle').textContent = (payload.name || 'Guess Who').toUpperCase();
+
+  if (gameChars.length > 0) {
+    const secret = gameChars[Math.floor(Math.random() * gameChars.length)];
+    secretRevealed = false;
+    $('secretBox').style.display = 'flex';
+    $('secretName').textContent  = secret.n;
+    $('secretName').classList.remove('revealed');
+  } else {
+    $('secretBox').style.display = 'none';
+  }
+
+  renderGameGrid();
+  showScreen('game');
+}
+
+function renderGameGrid() {
+  const grid = $('gameGrid');
+  $('eliminatedCount').textContent = eliminated.size;
+  grid.innerHTML = '';
+  gameChars.forEach((ch, i) => {
+    const card   = document.createElement('div');
+    card.className = 'game-card' + (eliminated.has(i) ? ' eliminated' : '');
+    const avatar = document.createElement('div'); avatar.className = 'game-avatar';
+    if (ch.i) { const img = document.createElement('img'); img.src = ch.i; img.alt = ''; img.onerror = () => img.style.display='none'; avatar.appendChild(img); }
+    else       { avatar.textContent = ch.e || '🙂'; }
+    const name = document.createElement('div'); name.className = 'game-char-name'; name.textContent = ch.n;
+    const btn  = document.createElement('button'); btn.className = 'eliminate-btn'; btn.textContent = '✕';
+    btn.addEventListener('click', () => { if (eliminated.has(i)) eliminated.delete(i); else eliminated.add(i); renderGameGrid(); });
+    card.append(avatar, name, btn);
+    grid.appendChild(card);
+  });
+  if (!gameChars.length) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--muted)">No characters</div>';
+}
+
+$('btnEye').addEventListener('click', () => { secretRevealed = !secretRevealed; $('secretName').classList.toggle('revealed', secretRevealed); });
+$('btnReset').addEventListener('click', () => { eliminated.clear(); renderGameGrid(); });
+
+/* Edit from game screen → go to editor with current data loaded */
+$('btnEditFromGame').addEventListener('click', async () => {
+  if (!editMode) return;
+  showLoading('Loading editor...');
+  try {
+    const code = editMode.type === 'public' ? editMode.editCode : editMode.playCode;
+    const payload = await dbGet(code);
+    hideLoading();
+    if (!payload) { showToast('Could not load game data.'); return; }
+    loadIntoEditor(payload);
+    updateEditorBanner();
+    showScreen('editor');
+  } catch(err) {
+    hideLoading();
+    showToast('Connection error.');
+    console.error(err);
+  }
+});
+
+/* ─── NAV ─── */
+$('btnCreateNew').addEventListener('click', () => { resetEditor(); showScreen('editor'); setTimeout(() => $('gameName').focus(), 50); });
+$('btnEditorBack').addEventListener('click', () => { editMode = null; updateEditorBanner(); showScreen('home'); });
+$('btnGameBack').addEventListener('click',   () => showScreen('home'));
+
+/* ─── PUBLIC GAMES LIST ─── */
+async function loadPublicGames() {
+  const list = $('publicGamesList');
+  try {
+    const games = await dbGetPublic();
+    if (!games.length) {
+      list.innerHTML = '<div class="public-empty">No public games yet — create one!</div>';
+      return;
+    }
+    list.innerHTML = '';
+    games.forEach(g => {
+      const card = document.createElement('div');
+      card.className = 'public-game-card';
+      const charCount = (g.chars || []).filter(c => c.n).length;
+      const info = document.createElement('div'); info.className = 'public-game-info';
+      const gname = document.createElement('div'); gname.className = 'public-game-name'; gname.textContent = g.name || 'Guess Who';
+      const gmeta = document.createElement('div'); gmeta.className = 'public-game-meta'; gmeta.textContent = charCount + ' characters';
+      info.append(gname, gmeta);
+      const playBtn = document.createElement('button'); playBtn.className = 'public-game-play'; playBtn.textContent = 'Play →';
+      playBtn.addEventListener('click', () => loadAndPlay(g.playCode || g.id, 'play'));
+      card.append(info, playBtn);
+
+      list.appendChild(card);
+    });
+  } catch(err) {
+    // Likely needs Firestore index — show fallback
+    list.innerHTML = '<div class="public-empty">Could not load public games.</div>';
+    console.error('Public games error:', err);
+  }
+}
+
+// Reload public list when returning to home
+$('btnEditorBack').addEventListener('click', loadPublicGames, { capture: true });
+$('btnGameBack').addEventListener('click',   loadPublicGames, { capture: true });
+
+/* ─── INIT ─── */
+renderCharsGrid();
+loadPublicGames();
+</script>
+</body>
+</html>
